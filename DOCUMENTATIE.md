@@ -54,7 +54,7 @@ df = (
 )
 
 df["category"] = df["category"].astype(str).str.strip().str.lower()
-
+```
 
 UX-relevantie:
 Deze stappen verhogen de betrouwbaarheid van de data, waardoor de gebruiker minder
@@ -65,6 +65,7 @@ ruis ziet op de kaart en routeadviezen beter te vertrouwen zijn.
 Voor veiligheidsinformatie is “recent” vaak belangrijker dan “ooit gebeurd”.
 Daarom krijgt data een recency-gewicht (exponentiële afname).
 
+```python
 now = pd.Timestamp.utcnow()
 cutoff = now - pd.Timedelta(days=30)
 df_recent = df[df["timestamp"] >= cutoff].copy()
@@ -72,7 +73,7 @@ df_recent = df[df["timestamp"] >= cutoff].copy()
 half_life_days = 7
 age_days = (now - df_recent["timestamp"]).dt.total_seconds() / (3600 * 24)
 df_recent["w_recency"] = 0.5 ** (age_days / half_life_days)
-
+```
 
 UX-relevantie:
 Heatmaps en waarschuwingen blijven actueel en voorkomen onnodige paniek door oude incidenten.
@@ -82,6 +83,7 @@ Heatmaps en waarschuwingen blijven actueel en voorkomen onnodige paniek door oud
 In plaats van elke melding exact te plotten (druk, onrustig en privacy-gevoelig),
 worden meldingen geaggregeerd per kaartcel (±150 meter).
 
+```python
 cell_size = 0.0015
 
 df_recent["cell_x"] = np.floor(df_recent["lat"] / cell_size).astype(int)
@@ -100,7 +102,7 @@ cell_risk = (
         last_seen=("timestamp", "max")
     )
 )
-
+```
 
 UX-relevantie:
 
@@ -120,6 +122,7 @@ Hotspot-indicatoren
 
 Recente meldingen
 
+```python
 cell_risk["risk_norm"] = (
     (cell_risk["risk_sum"] - cell_risk["risk_sum"].min()) /
     (cell_risk["risk_sum"].max() - cell_risk["risk_sum"].min() + 1e-9)
@@ -129,6 +132,7 @@ threshold = cell_risk["risk_sum"].quantile(0.90)
 hotspots = cell_risk[cell_risk["risk_sum"] >= threshold].copy()
 
 recent_2h = df[df["timestamp"] >= (now - pd.Timedelta(hours=2))]
+```
 
 1.7 Privacy-by-design
 
@@ -142,19 +146,22 @@ Alleen geaggregeerde risico-output
 
 Heldere instellingen voor delen en waarschuwingen
 
+```python
 client_payload = hotspots[
     ["cell_x", "cell_y", "risk_norm", "n_reports", "last_seen"]
 ].copy()
+```
 
 2. Machine learning techniques – conceptuele toepassing
 2.1 Van data naar risicoscore (feature engineering)
 
 In plaats van ML als black box wordt eerst een uitlegbare risicoscore opgebouwd.
 
+```python
 local_hour = now.tz_convert("Europe/Amsterdam").hour
 night_factor = 1.3 if (local_hour >= 22 or local_hour <= 6) else 1.0
 cell_risk["risk_score"] = cell_risk["risk_sum"] * night_factor
-
+```
 
 Dit is een expliciete feature-engineering stap die later door een ML-model kan worden geleerd
 of bijgesteld.
@@ -163,6 +170,7 @@ of bijgesteld.
 
 Gebruikersfeedback kan worden gebruikt om risicoscores te kalibreren.
 
+```python
 feedback_df = pd.read_csv("feedback.csv")
 
 cell = cell_risk.merge(
@@ -176,20 +184,25 @@ cell["feedback_factor"] = (
 cell["risk_score_calibrated"] = (
     cell["risk_score"] * cell["feedback_factor"]
 )
+```
 
 2.3 Routekeuze op basis van risicolagen
 
 De app biedt meerdere route-opties (snel, veilig, gebalanceerd).
 
+
+```python
 def score_route(route_cells, cell_score_map, alpha=0.7):
     risk = sum(cell_score_map.get(c, 0.0) for c in route_cells)
     distance_proxy = len(route_cells)
     return alpha * risk + (1 - alpha) * distance_proxy
+```
 
 2.4 Transparantie (“why this route?”)
 
 Routes worden uitlegbaar gemaakt om black-box gedrag te voorkomen.
 
+```python
 def explain_route(route_cells, cell_score_map):
     scores = [(c, cell_score_map.get(c, 0.0)) for c in route_cells]
     top = sorted(scores, key=lambda x: x[1], reverse=True)[:3]
@@ -197,6 +210,7 @@ def explain_route(route_cells, cell_score_map):
         "top_risk_cells": top,
         "total_risk": sum(s for _, s in scores)
     }
+```
 
 3. Learn new skills through inquisitive learning
 3.1 Nieuwe vaardigheden
