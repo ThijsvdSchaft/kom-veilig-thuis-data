@@ -1,0 +1,6 @@
+timestamp,lat,lon,category,source,severity
+2026-01-14T22:30:00Z,52.0907,5.1214,overlast,user,2
+2026-01-14T23:10:00Z,52.0912,5.1220,agressie,p2000,4
+2026-01-15T00:05:00Z,52.0899,5.1205,onveilig gevoel,user,1
+2026-01-15T01:40:00Z,52.0921,5.1231,overlast,user,2
+2026-01-15T02:15:00Z,52.0901,5.1219,agressie,p2000,3
